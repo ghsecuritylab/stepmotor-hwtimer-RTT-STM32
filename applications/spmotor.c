@@ -30,6 +30,8 @@ typedef struct
 } sp_data;
 
 
+#define SP1_P PBout(5)// PB5
+#define SP1_D PEout(5)// PE5	
 
 #define SP1_PULSE GET_PIN(B, 5)
 #define SP1_DIR   GET_PIN(E, 5)
@@ -43,7 +45,6 @@ typedef struct
 
 
 
-#define SP_EVENT_ONEPULSE   (1<<0)  //单次定时完成
 #define SP_EVENT_COMPLETE   (1<<1)  //sp1.current_pos=sp1.target_pos
 
 sp_data sp1;
@@ -52,113 +53,72 @@ sp_data sp2;
 
 static rt_mutex_t sp1_mutex = RT_NULL;  //对sp1数据进行保护
 static rt_event_t sp1_event = RT_NULL;  //记录sp1发生的事件
-static rt_thread_t sp1_thread = RT_NULL;//负责处理IO翻转的线程
 static rt_device_t sp1_hwtimer = RT_NULL;   /* 定时器设备句柄 */
 
 static rt_mutex_t sp2_mutex = RT_NULL;  //对sp1数据进行保护
 static rt_event_t sp2_event = RT_NULL;  //记录sp1发生的事件
-static rt_thread_t sp2_thread = RT_NULL;//负责处理IO翻转的线程
 static rt_device_t sp2_hwtimer = RT_NULL;   /* 定时器设备句柄 */
 
-static void sp1_run_thread_entry(void *parameter)
-{
-    static rt_err_t result;
-    rt_uint32_t e;
-    rt_uint8_t io_status = 0;
-    rt_pin_write(SP1_PULSE, PIN_LOW);
-    rt_pin_mode(SP1_PULSE, PIN_MODE_OUTPUT);
-    while (1)
-    {
-        result = rt_event_recv(sp1_event, SP_EVENT_ONEPULSE,
-                               RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR,
-                               RT_WAITING_FOREVER, &e);
-        if (result != RT_EOK)
-        {
-            rt_kprintf("take a dynamic semaphore, failed.\n");
-            rt_event_delete(sp1_event);
-            return;
-        }
 
-        rt_mutex_take(sp1_mutex, RT_WAITING_FOREVER);
-        io_status = rt_pin_read(SP1_PULSE);
-        if (PIN_HIGH == io_status)
-        {
-            rt_pin_write(SP1_PULSE, PIN_LOW);
-            if (sp1.target_pos == sp1.current_pos)
-            {
-                rt_event_send(sp1_event, SP_EVENT_COMPLETE);    //发送完成事件
-            }
-        }
-        else if (sp1.target_pos != sp1.current_pos)//PIN_LOW == io_status
-        {
-            if (CW == sp1.motor_dir)sp1.current_pos++;
-            else sp1.current_pos--;
-            rt_pin_write(SP1_PULSE, PIN_HIGH);
-        }
-
-        rt_mutex_release(sp1_mutex);
-
-    }
-}
-
-
-
-static void sp2_run_thread_entry(void *parameter)
-{
-    static rt_err_t result;
-    rt_uint32_t e;
-    rt_uint8_t io_status = 0;
-    rt_pin_write(SP2_PULSE, PIN_LOW);
-    rt_pin_mode(SP2_PULSE, PIN_MODE_OUTPUT);
-    while (1)
-    {
-        result = rt_event_recv(sp2_event, SP_EVENT_ONEPULSE,
-                               RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR,
-                               RT_WAITING_FOREVER, &e);
-        if (result != RT_EOK)
-        {
-            rt_kprintf("take a dynamic semaphore, failed.\n");
-            rt_event_delete(sp2_event);
-            return;
-        }
-
-        rt_mutex_take(sp2_mutex, RT_WAITING_FOREVER);
-        io_status = rt_pin_read(SP2_PULSE);
-        if (PIN_HIGH == io_status)
-        {
-            rt_pin_write(SP2_PULSE, PIN_LOW);
-            if (sp2.target_pos == sp2.current_pos)
-            {
-                rt_event_send(sp2_event, SP_EVENT_COMPLETE);    //发送完成事件
-            }
-        }
-        else if (sp2.target_pos != sp2.current_pos)//PIN_LOW == io_status
-        {
-            if (CW == sp2.motor_dir)sp2.current_pos++;
-            else sp2.current_pos--;
-            rt_pin_write(SP2_PULSE, PIN_HIGH);
-        }
-
-        rt_mutex_release(sp2_mutex);
-
-    }
-}
 
 
 static rt_err_t sp1_timeout_callback(rt_device_t dev, rt_size_t size)
 {
-    rt_event_send(sp1_event, SP_EVENT_ONEPULSE);
+    static rt_uint8_t io_status = 0;
+    /*从这里开始*/
+    //rt_event_send(sp1_event, SP_EVENT_ONEPULSE);
+    /*到这里结束，需要4.7us*/
+
+    /*从这里开始*/
+    //io_status = rt_pin_read(SP1_PULSE);
+		io_status = SP1_P;
+    if (PIN_HIGH == io_status)
+    {
+        rt_pin_write(SP1_PULSE, PIN_LOW);
+        if (sp1.target_pos == sp1.current_pos)
+        {
+            rt_event_send(sp1_event, SP_EVENT_COMPLETE);    //发送完成事件
+        }
+    }
+    else if (sp1.target_pos != sp1.current_pos)//PIN_LOW == io_status
+    {
+        if (CW == sp1.motor_dir)sp1.current_pos++;
+        else sp1.current_pos--;
+        rt_pin_write(SP1_PULSE, PIN_HIGH);
+    }
+    /*到这里结束，需要7us*/
+
     return RT_EOK;
 }
 
 static rt_err_t sp2_timeout_callback(rt_device_t dev, rt_size_t size)
 {
-    rt_event_send(sp2_event, SP_EVENT_ONEPULSE);
+    static rt_uint8_t io_status = 0;
+    //rt_event_send(sp2_event, SP_EVENT_ONEPULSE);
+    io_status = rt_pin_read(SP2_PULSE);
+    if (PIN_HIGH == io_status)
+    {
+        rt_pin_write(SP2_PULSE, PIN_LOW);
+        if (sp2.target_pos == sp2.current_pos)
+        {
+            rt_event_send(sp2_event, SP_EVENT_COMPLETE);    //发送完成事件
+        }
+    }
+    else if (sp2.target_pos != sp2.current_pos)//PIN_LOW == io_status
+    {
+        if (CW == sp2.motor_dir)sp2.current_pos++;
+        else sp2.current_pos--;
+        rt_pin_write(SP2_PULSE, PIN_HIGH);
+    }
     return RT_EOK;
 }
 
 static int sp1_sample(int argc, char *argv[])
 {
+    rt_pin_write(SP1_PULSE, PIN_LOW);
+    rt_pin_mode(SP1_PULSE, PIN_MODE_OUTPUT);
+    rt_pin_mode(SP1_DIR, PIN_MODE_OUTPUT);
+
     //创建事件
     if (sp1_event == NULL)
     {
@@ -179,17 +139,6 @@ static int sp1_sample(int argc, char *argv[])
             rt_kprintf("create mx_sp1 failed.\n");
             return -1;
         }
-    }
-
-    //创建线程并启动线程
-    if (sp1_thread == NULL)
-    {
-        sp1_thread = rt_thread_create("th_sp1",
-                                      sp1_run_thread_entry, RT_NULL,
-                                      1024,
-                                      3, 10);
-        if (sp1_thread != RT_NULL)
-            rt_thread_startup(sp1_thread);
     }
 
 
@@ -227,7 +176,7 @@ static int sp1_sample(int argc, char *argv[])
 
     /* 设置定时器超时值为5s并启动定时器 */
     timeout_s.sec = 0;           /* 秒 */
-    timeout_s.usec = 49;     /* 微秒 */
+    timeout_s.usec = 9;     /* 微秒 */
 
     if (rt_device_write(sp1_hwtimer, 0, &timeout_s, sizeof(timeout_s)) != sizeof(timeout_s))
     {
@@ -263,18 +212,6 @@ static int sp2_sample(int argc, char *argv[])
             return -1;
         }
     }
-
-    //创建线程并启动线程
-    if (sp2_thread == NULL)
-    {
-        sp2_thread = rt_thread_create("th_sp2",
-                                      sp2_run_thread_entry, RT_NULL,
-                                      1024,
-                                      3, 10);
-        if (sp2_thread != RT_NULL)
-            rt_thread_startup(sp2_thread);
-    }
-
 
     rt_err_t ret = RT_EOK;
     rt_hwtimerval_t timeout_s;      /* 定时器超时值 */
@@ -431,16 +368,16 @@ static int test_run(int argc, char *argv[])
     if (tid1 != RT_NULL)
         rt_thread_startup(tid1);
 
-		
-		
-		static rt_thread_t tid2 = RT_NULL;//负责处理IO翻转的线程
+
+
+    static rt_thread_t tid2 = RT_NULL;//负责处理IO翻转的线程
     tid2 = rt_thread_create("tid2",
                             test2_therad_entry, RT_NULL,
                             1024,
                             4, 10);
     if (tid2 != RT_NULL)
         rt_thread_startup(tid2);
-		
+
     return 0;
 }
 

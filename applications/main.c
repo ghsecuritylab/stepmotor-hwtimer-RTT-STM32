@@ -14,8 +14,8 @@
 #include "drv_gpio.h"
 
 /* defined the LED0 pin: PF7 */
-#define LED0_PIN    GET_PIN(B, 5)
-#define LED1_PIN    GET_PIN(E, 5)
+//#define LED0_PIN    GET_PIN(B, 5)
+//#define LED1_PIN    GET_PIN(E, 5)
 
 
 int main(void)
