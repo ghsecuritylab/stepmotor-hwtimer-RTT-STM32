@@ -52,7 +52,7 @@
           <CreateLib>0</CreateLib>
           <CreateHexFile>0</CreateHexFile>
           <DebugInformation>1</DebugInformation>
-          <BrowseInformation>1</BrowseInformation>
+          <BrowseInformation>0</BrowseInformation>
           <ListingPath>.\build\keil\List\</ListingPath>
           <HexFormatSelection>1</HexFormatSelection>
           <Merge32K>0</Merge32K>
@@ -539,11 +539,6 @@
               <FilePath>libraries\HAL_Drivers\drv_hwtimer.c</FilePath>
             </File>
             <File>
-              <FileName>drv_pwm.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>libraries\HAL_Drivers\drv_pwm.c</FilePath>
-            </File>
-            <File>
               <FileName>drv_common.c</FileName>
               <FileType>1</FileType>
               <FilePath>libraries\HAL_Drivers\drv_common.c</FilePath>
@@ -592,11 +587,6 @@
               <FileName>pin.c</FileName>
               <FileType>1</FileType>
               <FilePath>rt-thread\components\drivers\misc\pin.c</FilePath>
-            </File>
-            <File>
-              <FileName>rt_drv_pwm.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>rt-thread\components\drivers\misc\rt_drv_pwm.c</FilePath>
             </File>
             <File>
               <FileName>serial.c</FileName>

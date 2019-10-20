@@ -20,13 +20,11 @@
 
 
 ## 函数说明
-+ `static rt_err_t sp1_timeout_callback(rt_device_t dev, rt_size_t size)` ：中断回调函数，处理IO翻转等事宜、剩余脉冲计算等事宜。
-+ `static int sp1_sample(int argc, char *argv[])` ：对流程中需要用到的事件、互斥量、线程及定时器进行初始化操作，修改 `timeout_s` 的值即可实现定时器周期的修改。
-+ `static int set_target(int argc, char *argv[])` ：设置目标位置，通过对比`target_pos`和`current_pos`，修改方向和产生脉冲数。
-+ `static int get_value(int argc, char *argv[])` ：获取当前位置和目标位置。
-+ `static void test1_therad_entry(void *parameter)` ：到达目标位置后，自动增加目标位置的设置程序。
-+ `static int test_run(int argc, char *argv[])` ：两路脉冲输出的测试程序，即直接创建线程`test1_therad_entry`和`test2_therad_entry`
-
++ `int sp1_locate_abs(rt_uint32_t frequency, rt_int32_t num)`:控制1#步进电机，使用frequency频率，转动到距离原点num个脉冲处。
++ `int sp1_locate_rle(rt_uint32_t frequency, rt_int32_t num, DIR_Type dir)`:控制1#步进电机，使用frequency频率，向dir方向运动num个脉冲。
++ `int sp2_locate_abs(rt_uint32_t frequency, rt_int32_t num)`:控制2#步进电机，使用frequency频率，转动到距离原点num个脉冲处。
++ `int sp2_locate_rle(rt_uint32_t frequency, rt_int32_t num, DIR_Type dir)`:控制2#步进电机，使用frequency频率，向dir方向运动num个脉冲。
++ `static int autorun(int argc, char *argv[])`：自动运行函数；控制1#步进电机以100Hz的频率前进50个脉冲，同时控制2#步进电机以5000Hz的频率前进500个脉冲；指令发送完成的1s后，再控制两个电机回到原点。
 
 ## 运行结果
 
@@ -40,28 +38,23 @@
 msh > 
 ```
 
-输入 `sp1_sample`，系统会启动以1s的周期启动`timer4`，随后输入 `set_target 10` ，则对应着`SP1_PULSE`的引脚会输出0.5Hz为周期的10个脉冲。
-
-
-## 注意事项
-
-可以通过`rt_device_write(sp1_hwtimer, 0, &timeout_s, sizeof(timeout_s)) != sizeof(timeout_s)`重新修改定时器的周期，以此来改变占空比的值。
-当定时器周期为` 9us`时，运行`sp1_sample`后，设置目标坐标`set_target 999999999`，示波器可以看到实际49.1861kHz频率的方波，而此时的msh打印线程信息已经明显可以赶感觉到卡顿了。
-![board](figures/20.21us.jpg)
-
+输入 `autorun`，通过示波器可以看到相应频率的方波输出，同时MSH也有相应的输出：
 ```bash
-thread   pri  status      sp     stack size max used left tick  error
--------- ---  ------- ---------- ----------  ------  ---------- ---
-tshell    20  ready   0x00000190 0x00001000    14%   0x00000004 000
-tidle0    31  ready   0x00000044 0x00000100    32%   0x00000006 000
-main      10  suspend 0x00000078 0x00000800    10%   0x00000007 000
+ \ | /
+- RT -     Thread Operating System
+ / | \     4.0.0 build Oct 20 2019
+ 2006 - 2018 Copyright by rt-thread team
+msh >autorun
+sp1 begin run,freq=100,target=50,dir=CW
+sp2 begin run,freq=2000,target=500,dir=CW
+msh >sp1 begin run,freq=100,target=0,dir=CCW
+sp2 begin run,freq=5000,target=0,dir=CCW
+sp1 begin run,freq=100,target=50,dir=CW
+sp2 begin run,freq=2000,target=500,dir=CW
+sp1 begin run,freq=100,target=0,dir=CCW
+sp2 begin run,freq=5000,target=0,dir=CCW
 ```
-为了支持多步进电机使用，复制粘贴代码生成两路脉冲输出。
 
-使用`test1_therad_entry`动态增加目标位置，设置周期为`199us`即2.5kHz，输出依然跟不上：
-![board](figures/199us.jpg)
-如果需要动态修改输出速度，如步进电机加减速，此程序仅可用于2kHz以内频率双通道输出。
-单通道固定值不调速的话，可输出50kHz以内的频率，相比上一个版本有所提升。
 
 ## 联系人信息
 
